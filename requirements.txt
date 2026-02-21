@@ -1,0 +1,5 @@
+pydantic
+typing
+tiktoken
+re
+openai
