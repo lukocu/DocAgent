@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: qdrant_service
+    ports:
+      - "6333:6333"  
+      - "6334:6334"  
+    volumes:
+      - ./qdrant_storage:/qdrant/storage
+    restart: always
+
+  meilisearch:
+    image: getmeili/meilisearch:latest
+    container_name: meili_service
+    ports:
+      - "7700:7700"
+    environment:
+      - MEILI_MASTER_KEY=${MEILI_MASTER_KEY}
+      - MEILI_ENV=development
+    volumes:
+      - ./meili_data:/meili_data
+    restart: always
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres_service
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=sekretne_haslo
+      - POSTGRES_DB=rag_database
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+    restart: always 
+
+networks:
+  default:
+    name: ai_stack_network

@@ -3,3 +3,5 @@ typing
 tiktoken
 re
 openai
+aiofiles
+sqlalchemy 

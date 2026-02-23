@@ -117,6 +117,25 @@ class TextService:
         
         return text[start:end], end
 
+    def document(self, text: str, metadata: Optional[Dict] = None) -> Doc:
+        base_meta = metadata or {}
+    
+        tokens = self.count_tokens(text)
+ 
+        headers = self.extract_headers(text)
+
+        content, urls, images = self.extract_urls_and_images(text)
+        
+        doc_metadata = DocMetadata(
+            tokens=tokens,
+            headers=headers,
+            urls=urls,
+            images=images,
+            **base_meta
+        )
+        
+        return Doc(text=content, metadata=doc_metadata)    
+
     def _adjust_chunk_end(self, text: str, start: int, end: int, limit: int, overhead: int) -> int:
         min_chunk_tokens = limit * 0.8  
 
