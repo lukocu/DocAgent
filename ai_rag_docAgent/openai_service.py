@@ -7,11 +7,15 @@ class OpenAIService:
     def __init__(self):
         self.client = AsyncOpenAI()
 
-    async def completion(self, messages: List[Dict[str,str]], model: str = "gpt-5-mini") -> Optional[str]:
+    async def completion(self, messages: List[Dict[str,str]], model: str = "gpt-5-mini", json_mode: bool = False) -> Optional[str]:
         try:
+            kwargs = {}
+            if json_mode:
+                kwargs["response_format"] = {"type": "json_object"}
             response = await self.client.chat.completions.create(
                 model=model,
-                messages=messages
+                messages=messages,
+                **kwargs
             )
             return response.choices[0].message.content
         except Exception as e:
@@ -64,7 +68,7 @@ class OpenAIService:
                 audio_bytes = await audio_file.read()
 
             transcription = await self.client.audio.transcriptions.create(
-                model="gpt-4o-mini-transcribe",   
+                model="gpt-5-mini",   
                 file=("audio.wav", audio_bytes, "audio/wav"),  
                 language=language
             )

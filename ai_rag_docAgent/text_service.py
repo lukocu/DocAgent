@@ -1,5 +1,6 @@
 import tiktoken
 import re
+import uuid
 from typing import List, Tuple, Dict, Optional
 from models import Doc, DocMetadata
 
@@ -72,16 +73,16 @@ class TextService:
         chunks = []
         position = 0
         current_headers = {}
-
         base_meta = metadata or {}
 
         while position < len(text):
             chunk_text, chunk_end = self._get_chunk(text, position, limit)
             tokens = self.count_tokens(chunk_text)
 
-            extracted =self.extract_headers(chunk_text)
+            extracted = self.extract_headers(chunk_text)
             self._update_current_headers(current_headers, extracted)
             content, urls, images = self.extract_urls_and_images(chunk_text)
+            
             doc_metadata = DocMetadata(
                 tokens=tokens,
                 headers=current_headers.copy(),

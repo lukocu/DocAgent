@@ -4,7 +4,7 @@ from typing import List, Dict, Any, Optional
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy import select
 from config import settings
-from models import Doc
+from models import Doc, DocMetadata
 from db_models import Base, DocumentModel
 from search_service import SearchService
 from vector_service import VectorService
@@ -58,19 +58,43 @@ class DatabaseService:
         return None
 
 
-    async def hybrid_search(self, query: str, limit: int = 15) -> List[Dict[str, Any]]:
-        vector_task = self.vector_service.perform_search("documents", query, limit=limit)
-        text_task = self.search_service.search_single_index("documents", query, limit=limit) 
+    async def hybrid_search(self, query_vector: str, query_text: str, source_uuids: List[str] = None, limit: int = 15) -> List[Doc]:
+        qdrant_filter = None
+        if source_uuids:
+            from qdrant_client.models import Filter, FieldCondition, MatchAny
+            qdrant_filter = Filter(
+                must=[FieldCondition(
+                    key="source_uuid",
+                    match=MatchAny(any=source_uuids)
+                )]
+            )
+
+        meili_filter = None
+        if source_uuids:
+            uuids_str = ", ".join(f'"{uid}"' for uid in source_uuids)
+            meili_filter = f"source_uuid IN [{uuids_str}]"
+
+        vector_task = self.vector_service.perform_search(
+            "documents", query_vector,
+            limit=limit,
+            query_filter=qdrant_filter
+        )
+        text_task = self.search_service.search_single_index(
+            "documents", query_text,
+            limit=limit,
+            filters=meili_filter
+        )
+
         vector_results, text_results = await asyncio.gather(vector_task, text_task)
         rrf_results = self._calculate_rrf(vector_results, text_results)
 
         if not rrf_results:
             return []
-            
-        avg_score = sum(item["score"] for item in rrf_results) / len(rrf_results)
-        filtered_rrf = [item for item in rrf_results if item["score"] >= avg_score]
 
-        return filtered_rrf
+        avg_score = sum(item["score"] for item in rrf_results) / len(rrf_results)
+        
+        valid_items = [item for item in rrf_results if item["score"] >= avg_score]
+        return [Doc(text=item["text"], metadata=item) for item in valid_items]  
 
     def _calculate_rrf(self, vector_results: List[Dict[str, Any]], text_results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         result_map = {}

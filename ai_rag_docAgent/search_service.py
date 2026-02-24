@@ -1,26 +1,33 @@
 from typing import Dict, Any, List, Optional
 from meilisearch_python_sdk import AsyncClient
 from config import settings
+from pydantic import SecretStr
 import asyncio
 
 class SearchService:
     def __init__(self):
+        meili_key = settings.meili_master_key
         self.client = AsyncClient(
-            url=settings.meili_url, 
-            api_key=settings.meili_master_key.get_secret_value()
+            url=settings.meili_url,
+            api_key=meili_key.get_secret_value(),  # pylint: disable=no-member
         )
 
     async def setup_index_ux(self, index_name: str):
         index = self.client.index(index_name)
         await index.update_searchable_attributes(["text", "metadata"])
 
-        await index.update_typo_tolerance({
-            "enabled": True,
-            "minWordSizeForTypos": {
-                "oneTypo": 3,
-                "twoTypos": 7
-            }
-        })
+        # --- DODANA LINIJKA ---
+        await index.update_filterable_attributes(["source_uuid"])
+        # ----------------------
+
+        # Workaround: MeiliSearch SDK update_typo_tolerance expects a pydantic model. Using dict causes AttributeError.
+        # await index.update_typo_tolerance({
+        #     "enabled": True,
+        #     "minWordSizeForTypos": {
+        #         "oneTypo": 3,
+        #         "twoTypos": 7
+        #     }
+        # })
         print(f"Zaktualizowano ustawienia UX dla indeksu: {index_name}")
 
     async def search_single_index(self, index_name: str, query: str, filters: Any = None, limit: int = 20) -> List[Dict[str, Any]]:

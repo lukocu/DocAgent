@@ -42,18 +42,19 @@ class VectorService:
     async def delete_point(self, collection_name: str, point_id: str):
         await self.client.delete(collection_name=collection_name, points_selector=[point_id])
 
-    async def perform_search(self, collection_name: str, query: str, limit: int = 15) -> List[Dict[str, Any]]:
+    async def perform_search(self, collection_name: str, query: str, limit: int = 15, query_filter=None) -> List[Dict[str, Any]]:
         try:    
             vector = await self.openai_service.create_embedding(query)
             
             if not vector:
                 return []
                 
-            results = await self.client.search(
+            response  = await self.client.query_points(
                 collection_name=collection_name,
-                query_vector=vector,
+                query=vector,        
                 limit=limit,
-                with_payload=True 
+                with_payload=True,
+                query_filter=query_filter
             )
 
             formatted_results = [
@@ -62,7 +63,7 @@ class VectorService:
                     "score": r.score,       
                     **(r.payload or {})     
                 }
-                for r in results
+                for r in response.points
             ]
 
             return formatted_results
